@@ -1,0 +1,96 @@
+{
+    var names = new Set();
+}
+
+Graph = "\n"* line:GraphLine tail:(GraphLine)* { 
+    var lines = [line];
+    for (var line of tail) {
+        lines.push(line);
+    }
+    return lines;
+}
+
+GraphLine
+  = node:Node tail:(_ "->" _ Node)* _ "\n"* {
+    var nodes = [node];
+    var connections = [];
+
+    for (var i = 0; i < tail.length; i++) {
+        nodes.push(tail[i][3]);
+        var connection = {from: nodes[i].name, to: nodes[i+1].name};
+        if (nodes[i].postConnectionName) {
+            connection.fromName = nodes[i].postConnectionName;
+            delete nodes[i].postConnectionName;
+        }
+        if (nodes[i+1].preConnectionName) {
+            connection.toName = nodes[i+1].preConnectionName;
+            delete nodes[i+1].preConnectionName;
+        }
+        connections.push(connection);
+    }
+    
+    return {nodes: nodes, connections: connections};
+  }
+  
+Node = preConnectionName:ConnectionName? name:(Name?) type:Type inputs:Inputs? configs:Configs? postConnectionName:ConnectionName? {
+    var node = {type: type, inputs: [], configs: {}};
+    if (name == undefined) {
+        var name = type[0].toLowerCase() + type.slice(1);
+        if (name !== type) {
+          if (names.has(name)) {
+              var lid = 0;
+              while (names.has(name + lid))
+                  lid++;
+              name = name + lid;
+          }
+        }
+    }
+    names.add(name);
+    node.name = name;
+    if (inputs)
+        node.inputs = inputs;
+    if (configs)
+        node.configs = configs;
+    if (postConnectionName)
+        node.postConnectionName = postConnectionName;
+    if (preConnectionName)
+        node.preConnectionName = preConnectionName;
+    return node;        
+}
+
+Name = name:Type "@" { return name}
+
+ConnectionName = "[" name:ConfigName "]" { return name; }
+
+Type = [a-zA-Z][a-zA-Z0-9]* { return text() }
+
+Inputs = "(" input:Input tail:(_ "," _ Input)* ")" {
+    var result = [input];
+    for (var i = 0; i < tail.length; i++)
+        result.push(tail[i][3]);
+    return result;
+}
+
+Configs = "{" config:Config tail:(_ "," _ Config)* "}" {
+    var configs = {}
+    configs[config.key] = config.value;
+    for (var i = 0; i < tail.length; i++) {
+        var c = tail[i][3];
+        configs[c.key] = c.value;
+    }
+    return configs;
+}
+
+Config = key:ConfigName _ ":" _ value:Input {
+    return { key, value }
+}
+
+Input = Number / Type / Point2 
+
+Number = [0-9.]+ { return Number(text()); }
+
+Point2 = "(" _ x:Number _ "," _ y:Number _ ")" { return { x, y }; }
+
+ConfigName = [a-z][a-zA-Z0-9]* { return text() }
+
+_ "whitespace" = [ \t\n\r]*

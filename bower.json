@@ -1,0 +1,20 @@
+{
+  "name": "togra",
+  "authors": [
+    "shans <shane.stephens@gmail.com>"
+  ],
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "threejs": "*"
+  }
+}
