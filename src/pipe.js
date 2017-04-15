@@ -1,6 +1,7 @@
 "use strict";
 
 var geom = require("./geometry.js");
+var connect = require("./connect.js");
 var Point2 = geom.Point2;
 
 class Output {
@@ -112,9 +113,6 @@ function define(name, inputs, outputs, f) {
 		static get definedOutputs() {
 			return outputs;
 		}
-		static get f() {
-			return f;
-		}
 		constructor() {
 			super();
 			for (var input in inputs)
@@ -125,7 +123,7 @@ function define(name, inputs, outputs, f) {
 
 		ready() {
 			this.watch(Object.keys(inputs), args => {
-				let result = f(args);
+				let result = f.bind(this)(args);
 				for (var output in outputs)
 					this.setOutput(output, result[output]);
 			});
@@ -133,8 +131,105 @@ function define(name, inputs, outputs, f) {
 	}
 }
 
+function group(definition, data) {
+	var inputs = {};
+	var outputs = {};
+	if (data == undefined) {data = {}};
+
+	// TODO have a lighter-weight parser to extract just the types.
+	var objects = connect.build(definition, {}, data);
+
+	for (var name in objects) {
+		var pipe = objects[name];
+		for (var input of pipe.inputTypes.keys()) {
+			if (pipe.inputs.get(input) == undefined) {
+					inputs[input] = pipe.inputTypes.get(input);
+			}
+		}
+		for (var output of pipe.outputTypes.keys()) {
+			if (pipe.outputs.get(output) == undefined) {
+					outputs[output] = pipe.outputTypes.get(output);
+			}
+		}
+	}
+
+	return class extends Pipe {
+		static get name() {
+			return `Group(${definition})`;
+		}
+		static get definedInputs() {
+			return inputs;
+		}
+		static get definedOutputs() {
+			return outputs;
+		}
+		constructor() {
+			super();
+
+			this.inputPipes = new Map();
+			this.outputPipes = new Map();
+			if (data == undefined) {data = {}};
+			var objects = connect.build(definition, {}, data);
+			for (var name in objects) {
+				var pipe = objects[name];
+				for (var input of pipe.inputTypes.keys()) {
+					if (pipe.inputs.get(input) == undefined) {
+						this.inputTypes.set(input, pipe.inputTypes.get(input));
+						this.inputPipes.set(input, pipe);
+					}
+				}
+				for (var output of pipe.outputTypes.keys()) {
+					if (pipe.outputs.get(output) == undefined) {
+						this.outputTypes.set(output, pipe.outputTypes.get(output));
+						this.outputPipes.set(output, pipe);
+					}
+				}
+			}
+
+		}
+		connectInput(name, input) {
+			this.inputPipes.get(name).connectInput(name, input);
+			this.inputs.set(name, this.inputPipes.get(name).inputs.get(name));
+		}
+
+		getOutput(name) {
+			var output = this.outputPipes.get(name).getOutput(name);
+			this.outputs.set(name, output);
+			return output;
+		}		
+	}
+
+}
+
 function map(pipeClass, input) {
 	return zipper(pipeClass, [input]);
+}
+
+class MultiplexingOutput {
+	constructor(pipe, output, size) {
+		this.pipe = pipe;
+		this.output = output;
+		this.value = [];
+		this.size = size;
+		this.count = 0;
+	}
+	setSize(size) {
+		this.size = size;
+		this.value = this.value.slice(0, size);
+		this.count = 0;
+	}
+	setOutput(index, output) {
+		var apply = () => {
+			this.value[index] = output.current();
+			this.count++;
+			if (this.count == this.size) {
+				this.pipe.setOutput(this.output, this.value);
+				this.count = 0;
+			}
+		}
+		output.when(apply);
+		apply();
+	}
 }
 
 function zipper(pipeClass, mapped) {
@@ -160,10 +255,7 @@ function zipper(pipeClass, mapped) {
 		}
 		static get definedOutputs() {
 			return outputs;
-		}
-		static get f() {
-			return f;
-		}		
+		}	
 		constructor() {
 			super();
 			for (var i in inputs)
@@ -178,29 +270,33 @@ function zipper(pipeClass, mapped) {
 			// TODO init/teardown
 			this.mappedInputs[name] = mappedInput;
 			var length = Math.min(...mapped.map(a => this.mappedInputs[a].length));
+			this.multiplexingOutput.setSize(length);
 			if (this.mappedPipes.length > length) {
 				this.mappedPipes = this.mappedPipes.slice(0, length);
+				// NEED TO DEAL WITH INPUT DEREGISTRATION HERE
+				assert(false);
 			}
-			while (this.mappedPipes.length < length) {
-				this.mappedPipes.push(new pipeClass());
-			}
-		}
-		respondToChange() {			
-			var args = {};
-			for (var i of Object.keys(inputs)) {
-				if (mapped.indexOf(i) !== -1)
-					continue;
-				args[i] = this.inputs.get(i).current();
-			}
-			var result = [];
 			for (var i = 0; i < this.mappedPipes.length; i++) {
-				for (var j of mapped)
-					args[j] = this.mappedInputs[j][i];
-				var out = pipeClass.f.call(this.mappedPipes[i], args);
-				result.push(out[output]);
+				var pipe = this.mappedPipes[i];
+				pipe.inputs.get(name).set(mappedInput[i])
 			}
-			this.setOutput(output, result);
+
+			while (this.mappedPipes.length < length) {
+				var pipe = new pipeClass();
+				for (var i of this.inputsExceptMapped) {
+					pipe.connectInput(i, this.inputs.get(i));
+				}
+				for (var mI of mapped) {
+					// TODO:pass in mapped input pipe/name?
+					var pipeOutput = new PipeOutput();
+					pipeOutput.set(this.inputs.get(mI).current()[this.mappedPipes.length]);
+					pipe.connectInput(mI, pipeOutput);
+				}
+				this.multiplexingOutput.setOutput(this.mappedPipes.length, pipe.getOutput(output));
+				this.mappedPipes.push(pipe);
+			}
 		}
+
 		ready() {
 			var inputsExceptMapped = [];
 			for (var i of Object.keys(inputs)) {
@@ -208,22 +304,18 @@ function zipper(pipeClass, mapped) {
 					continue;
 				inputsExceptMapped.push(i);
 			}
-			mapped.forEach(mI => this.inputs.get(mI).when(() => {
-				this.mappedChanged(mI, this.inputs.get(mI).current());
-				this.respondToChange();
-			}));
-
-			var inputObjects = inputsExceptMapped.map(i => this.inputs.get(i));
-			for (var i of inputObjects) {
-				i.when(() => {
-					this.respondToChange();
+			this.inputsExceptMapped = inputsExceptMapped;
+			this.multiplexingOutput = new MultiplexingOutput(this, output, 0);
+			
+			mapped.forEach(mI => {
+				this.inputs.get(mI).when(() => {
+					this.mappedChanged(mI, this.inputs.get(mI).current());
 				});
-			}
+				this.mappedChanged(mI, this.inputs.get(mI).current());
+			});
 
-			mapped.forEach(mI => this.mappedChanged(mI, this.inputs.get(mI).current()));
-			this.respondToChange();
 		}
 	}
 }
 
-module.exports = {define, map, zipper, Immediate, Output};
+Object.assign(module.exports, {define, map, zipper, group, Immediate, Output});

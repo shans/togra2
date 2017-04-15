@@ -51,8 +51,7 @@ function toValue(value, data) {
 	}
 }
 
-exports.build = function(lines, objects, data) {
-	var s = lines.join('\n');
+exports.build = function(s, objects, data) {
 	var graphLines = parse.parse(s);
 	for (var line of graphLines) {
 		for (var nodeDesc of line.nodes) {

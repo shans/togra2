@@ -24,17 +24,17 @@ scene.add(cube);
 camera.position.z = 20;
 
 var list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0];
-var o = new (T.zipper(Sphere, ["origin", "radius"]))();
+var g = T.group("Sphere -> m@Mesh -> TranslateMesh\nMeshNormalMaterial -> m");
+var o = new (T.zipper(g, ["origin", "radius"]))();
+// var o = new (T.zipper(TestingSphere, ["origin", "radius"]))();
 
-var objects = T.build([
-
+var objects = T.build(
 `
 UnitAnimationOutput(2) -> [a]Multiply{b:5} -> Add{b:5} -> c@Circle{origin:(0,0),numPoints:20}
 c -> o{widthSegments:16,heightSegments:16}
 TickOutput(0.5) -> [trigger]Shift{array:list}[array] -> [radius]o
-`
+`, { o }, { list });
 
-	], { o }, { list });
 
 var anim = objects.unitAnimationOutput;
 var tick = objects.tickOutput;
@@ -49,8 +49,8 @@ function render() {
 }
 render();
 
-var out = o.getOutput("sphere");
-console.log(out);
+// var out = o.getOutput("sphere");
+var out = o.getOutput("mesh");
 out.value.forEach(m => scene.add(m));
 </script>
 </body>
