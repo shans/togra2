@@ -318,4 +318,43 @@ function zipper(pipeClass, mapped) {
 	}
 }
 
-Object.assign(module.exports, {define, map, zipper, group, Immediate, Output});
+var _memos = new Map();
+
+function memoize(pipeClass) {
+	return define(
+		`Memo(${pipeClass.name})`,
+		pipeClass.definedInputs,
+		pipeClass.definedOutputs,
+		function(args) {
+			var strargs = JSON.stringify(args);
+			if (this.memo && this.memo.has(strargs)) {
+				return this.memo.get(strargs);
+			}
+			if (this.memo == undefined) {
+				if (!_memos.has(pipeClass)) {
+					this.memo = new Map();
+					_memos.set(pipeClass, this.memo);
+				} else {
+					this.memo = _memos.get(pipeClass);
+				}
+				this.innerPipe = new pipeClass();
+				for (var input in pipeClass.definedInputs) {
+					var po = new PipeOutput();
+					po.set(args[input]);
+					this.innerPipe.connectInput(input, po);
+				}
+				for (var output in pipeClass.definedOutputs)
+					this.innerPipe.getOutput(output);
+			} else {
+				for (var input in pipeClass.definedInputs)
+					this.innerPipe.inputs.get(input).set(args[input])
+			}
+			var result = {};
+			for (var output in pipeClass.definedOutputs) 
+				result[output] = this.innerPipe.getOutput(output).current();
+			this.memo.set(strargs, result);
+			return result;
+		});
+}
+
+Object.assign(module.exports, {define, map, zipper, group, memoize, Immediate, Output});

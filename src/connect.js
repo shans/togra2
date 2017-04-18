@@ -56,7 +56,15 @@ exports.build = function(s, objects, data) {
 	for (var line of graphLines) {
 		for (var nodeDesc of line.nodes) {
 			if (!objects[nodeDesc.name]) {
-				if (T[nodeDesc.type])
+				// TODO make this proppa recursive
+				if (nodeDesc.type.op) {
+					if (T[nodeDesc.type.prim])
+						var obj = T[nodeDesc.type.prim];
+					else
+						var obj = eval(nodeDesc.type.prim);
+					objects[nodeDesc.name] = new (T[nodeDesc.type.op](obj))();
+				}
+				else if (T[nodeDesc.type])
 					objects[nodeDesc.name] = new T[nodeDesc.type](...nodeDesc.inputs);
 				else
 					objects[nodeDesc.name] = eval("new " + nodeDesc.type + "(...nodeDesc.inputs)");

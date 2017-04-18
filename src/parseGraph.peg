@@ -35,7 +35,11 @@ GraphLine
 Node = preConnectionName:ConnectionName? name:(Name?) type:Type inputs:Inputs? configs:Configs? postConnectionName:ConnectionName? {
     var node = {type: type, inputs: [], configs: {}};
     if (name == undefined) {
-        var name = type[0].toLowerCase() + type.slice(1);
+        if (type.op) {
+            var name = type.op + "(" + type.prim + ")";
+        } else {
+            var name = type[0].toLowerCase() + type.slice(1);
+        }
         if (name !== type) {
           if (names.has(name)) {
               var lid = 0;
@@ -62,7 +66,13 @@ Name = name:Type "@" { return name}
 
 ConnectionName = "[" name:ConfigName "]" { return name; }
 
-Type = [a-zA-Z][a-zA-Z0-9]* { return text() }
+Type = CompositeType / PrimitiveType
+
+CompositeType = "<" _ op:PrimitiveType _ prim:PrimitiveType _ ">" {
+    return { op, prim };
+}
+
+PrimitiveType = [a-zA-Z][a-zA-Z0-9]* { return text() }
 
 Inputs = "(" input:Input tail:(_ "," _ Input)* ")" {
     var result = [input];
@@ -85,7 +95,7 @@ Config = key:ConfigName _ ":" _ value:Input {
     return { key, value }
 }
 
-Input = Number / Type / Point2 
+Input = Number / PrimitiveType / Point2 
 
 Number = [0-9.]+ { return Number(text()); }
 

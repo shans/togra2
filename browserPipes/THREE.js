@@ -95,7 +95,7 @@ var TestingSphere = T.define(
 		}
 		if (this.radius != radius) {
 			var geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
-			this.sphere.geometry.dispose();
+			// this.sphere.geometry.dispose();
 			this.sphere.geometry = geometry;
 			this.radius = radius;
 		}
