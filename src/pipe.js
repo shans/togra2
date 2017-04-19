@@ -63,6 +63,9 @@ class Pipe {
 	}
 
 	getOutput(name) {
+		if (this.outputs.has(name)) {
+			return this.outputs.get(name);
+		}
 		if (this.outputTypes.has(name)) {
 			var output = new PipeOutput(this, name);
 			this.outputs.set(name, output);
@@ -193,6 +196,9 @@ function group(definition, data) {
 		}
 
 		getOutput(name) {
+			if (this.outputs.has(name)) {
+				return this.outputs.get(name);
+			}
 			var output = this.outputPipes.get(name).getOutput(name);
 			this.outputs.set(name, output);
 			return output;

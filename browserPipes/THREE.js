@@ -66,6 +66,17 @@ var TranslateMesh = T.define(
 		return {mesh}
 	});
 
+var RotateMesh = T.define(
+	"RotateMesh",
+	{x: "Number", y: "Number", z: "Number", mesh: "Mesh"},
+	{mesh: "Mesh"},
+	({x, y, z, mesh}) => {
+		mesh.rotation.x = x;
+		mesh.rotation.y = y;
+		mesh.rotation.z = z;
+		return {mesh};
+	});
+
 // TODO: some kind of reference counting system so that geometry objects can be released?
 var Sphere = T.define(
 	"Sphere",
@@ -73,7 +84,16 @@ var Sphere = T.define(
 	{geometry: "Geometry"},
 	({radius, widthSegments, heightSegments}) => {
 		var geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments);
-		return {geometry}
+		return {geometry};
+	});
+
+var Box = T.define(
+	"Box",
+	{width: "Length", height: "Length", depth: "Length"},
+	{geometry: "Geometry"},
+	({width, height, depth}) => {
+		var geometry = new THREE.BoxGeometry(width, height, depth);
+		return {geometry};
 	});
 
 var MeshNormalMaterial = T.define(
