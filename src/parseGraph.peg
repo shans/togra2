@@ -68,9 +68,11 @@ ConnectionName = "[" name:ConfigName "]" { return name; }
 
 Type = CompositeType / PrimitiveType
 
-CompositeType = "<" _ op:PrimitiveType _ prim:PrimitiveType _ ">" {
+CompositeType = "<" _ op:PrimitiveType _ prim:UnparsedChunk _ ">" {
     return { op, prim };
 }
+
+UnparsedChunk = "`" ([^`]*) "`" { var s = text(); return s.substring(1, s.length - 1); }
 
 PrimitiveType = [a-zA-Z][a-zA-Z0-9]* { return text() }
 

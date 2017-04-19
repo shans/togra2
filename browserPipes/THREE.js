@@ -66,6 +66,7 @@ var TranslateMesh = T.define(
 		return {mesh}
 	});
 
+// TODO: some kind of reference counting system so that geometry objects can be released?
 var Sphere = T.define(
 	"Sphere",
 	{radius: "Length", widthSegments: "Number", heightSegments: "Number"},
