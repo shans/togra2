@@ -51,28 +51,41 @@ function toValue(value, data) {
 	}
 }
 
+function typeToClass(type, inputs) {
+	if (type.op) {
+		if (type.op == "group") {
+			return T.group(type.data);
+		}
+		var clazz = typeToClass(type.prim.type, type.prim.inputs);
+		return T[type.op](clazz, ...inputs);
+	}
+	if (T[type])
+		return T[type];
+	return eval(type);
+}
+
+function configure(instance, config, data) {
+	for (var key in config) {
+		var value = toValue(config[key], data);
+		exports.configureNamed(instance, key, value);
+	}	
+}
+
+function configuredInstance(type, inputs, config, data) {
+	var clazz = typeToClass(type, inputs);
+	var instance = new clazz(...inputs);
+	configure(instance, config, data);
+	return instance;
+}
+
 exports.build = function(s, objects, data) {
 	var graphLines = parse.parse(s);
 	for (var line of graphLines) {
 		for (var nodeDesc of line.nodes) {
 			if (!objects[nodeDesc.name]) {
-				// TODO make this proppa recursive
-				if (nodeDesc.type.op) {
-					if (T[nodeDesc.type.prim])
-						var obj = T[nodeDesc.type.prim];
-					else
-						var obj = eval(nodeDesc.type.prim);
-					objects[nodeDesc.name] = new (T[nodeDesc.type.op](obj))();
-				}
-				else if (T[nodeDesc.type])
-					objects[nodeDesc.name] = new T[nodeDesc.type](...nodeDesc.inputs);
-				else
-					objects[nodeDesc.name] = eval("new " + nodeDesc.type + "(...nodeDesc.inputs)");
-			}
-			var o = objects[nodeDesc.name];
-			for (var key in nodeDesc.configs) {
-				var value = toValue(nodeDesc.configs[key], data);
-				exports.configureNamed(o, key, value);
+				objects[nodeDesc.name] = configuredInstance(nodeDesc.type, nodeDesc.inputs, nodeDesc.configs, data);
+			} else {
+				configure(objects[nodeDesc.name], nodeDesc.configs, data);
 			}
 		}
 	}

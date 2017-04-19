@@ -248,7 +248,7 @@ function zipper(pipeClass, mapped) {
 
 	return class extends Pipe {
 		static get name() {
-			return "Mapped" + pipeClass + ":" + input;
+			return "Mapped" + pipeClass.name + ":" + mapped;
 		}
 		static get definedInputs() {
 			return inputs;
