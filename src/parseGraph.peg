@@ -32,7 +32,7 @@ GraphLine
     return {nodes: nodes, connections: connections};
   }
 
-Group = "group(" _ data:UnparsedChunk _ ")" { return {op: group, data }}
+Group = "group(" _ data:UnparsedChunk _ ")" { return {op: 'group', data }}
 
 Node = preConnectionName:ConnectionName? name:(Name?) type:Type inputs:Inputs? configs:Configs? postConnectionName:ConnectionName? {
     var node = {type: type, inputs: [], configs: {}};
@@ -68,7 +68,7 @@ Name = name:Type "@" { return name}
 
 ConnectionName = "[" name:ConfigName "]" { return name; }
 
-Type = CompositeType / PrimitiveType / Group
+Type = Group / CompositeType / PrimitiveType 
 
 CompositeType = "<" _ op:PrimitiveType _ prim:Node _ ">" {
     return { op, prim };
@@ -99,7 +99,18 @@ Config = key:ConfigName _ ":" _ value:Input {
     return { key, value }
 }
 
-Input = Number / PrimitiveType / Point2 
+Input = Number / PrimitiveType / Point2 / List
+
+List = "[" _ h:Input? t:(_ "," _ Input)* _ "]" {
+    var result = [];
+    if (h) {
+        result.push(h);
+    }
+    for (var entry of t) {
+        result.push(entry[3]);
+    }
+    return result;
+}
 
 Number = [0-9.]+ { return Number(text()); }
 
