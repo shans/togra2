@@ -1,15 +1,32 @@
 var T = require("../src/runtime.js");
 
-class UnitAnimationOutput extends T.Output {
+var tickers = [];
+
+function tick() {
+  var t = performance.now();
+  tickers.forEach(a => a._tick(t));
+}
+
+class Animation extends T.Output {
+  constructor() {
+    super();
+    this._baseTime = performance.now();
+    this._currentTime = this._baseTime;
+    tickers.push(this);
+  }
+  _tick(t) {
+    this._currentTime = t;
+    this.tick();
+  }
+}
+
+class UnitAnimationOutput extends Animation {
   constructor(period) {
     super();
     this._period = period;
-    this._baseTime = performance.now();
-    this._currentTime = this._baseTime;
   }
 
   tick() {
-    this._currentTime = performance.now();
     this.update();
   }
 
@@ -19,17 +36,14 @@ class UnitAnimationOutput extends T.Output {
   }
 }
 
-class TickOutput extends T.Output {
+class TickOutput extends Animation {
   constructor(period) {
     super();
     this._period = period;
-    this._baseTime = performance.now();
-    this._currentTime = this._baseTime;
     this._lastValue = 0;
   }
 
   tick() {
-    this._currentTime = performance.now();
     var value = Math.floor((this._currentTime - this._baseTime) / (this._period * 1000));
     if (value !== this._lastValue) {
       this._lastValue = value;
@@ -42,4 +56,4 @@ class TickOutput extends T.Output {
   }
 }
 
-module.exports = { UnitAnimationOutput, TickOutput };
+module.exports = { UnitAnimationOutput, TickOutput, tick };

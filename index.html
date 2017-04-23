@@ -33,16 +33,9 @@ Box{width: 1,height:1,depth:1} -> m2@Mesh -> r
 MeshNormalMaterial -> m2
 `, { }, { list , PI2: Math.PI * 2});
 
-
-var anim = objects.unitAnimationOutput;
-var tick = objects.tickOutput;
-var anim0 = objects.unitAnimationOutput0;
-
 function render() {
 	requestAnimationFrame(render);
-	anim.tick();
-	tick.tick();
-  anim0.tick();
+	T.tick();
 	renderer.render(scene, camera);
 }
 render();
