@@ -37,4 +37,31 @@ var RotateMesh = T.define(
     return {mesh};
   });
 
-module.exports = { Mesh, TranslateMesh, RotateMesh };
+// This is a bit broken for a couple of reasons.
+// The scene changing doesn't really make sense if not
+// coordinated with mesh inputs, so maybe it should be
+// an input parameter instead. But there's no way to do
+// that with T.define yet.
+//
+// Also it's strange to think of this like a pipeline
+// with updates given that we kinda actually want to
+// know only when the meshes themselves are created
+// or deleted. 
+var RenderMeshes = T.define(
+  "RenderMesh",
+  {meshes: "[Mesh]", scene: "Scene"},
+  {},
+  // TODO: how to deal with deletion?
+  function(args) {
+    let { meshes, scene } = args;
+    if (this.meshes == undefined)
+      this.meshes = new Set();
+    meshes.forEach(m => {
+      if (!this.meshes.has(m)) {
+        this.meshes.add(m);
+        scene.add(m);
+      }
+    });
+  });
+
+module.exports = { Mesh, TranslateMesh, RotateMesh, RenderMeshes };
