@@ -5,29 +5,33 @@ var connect = require("./connect.js");
 var Point2 = geom.Point2;
 
 class Output {
-	constructor() {
+	constructor(scheduler) {
 		this.watchers = [];
+		this.scheduler = scheduler;
 	}
 	when(f) {
 		this.watchers.push(f);
 	}
 	update() {
+		this.dirty = false;
 		this.watchers.forEach(f => f());
 	}
-
+	schedule() {
+		this.scheduler.schedule(() => this.update());
+	}
 	current() {}
 }
 
 class PipeOutput extends Output {
-	constructor(pipe, name) {
-		super();
+	constructor(scheduler, pipe, name) {
+		super(scheduler);
 		this._pipe = pipe;
 		this._name = name;
 	}
 
 	set(value) {
 		this.value = value;
-		this.update();
+		this.schedule();		
 	}
 
 	current() {
@@ -36,9 +40,10 @@ class PipeOutput extends Output {
 }
 
 class Immediate extends Output {
-	constructor(value) {
-		super();
+	constructor(scheduler, value) {
+		super(scheduler);
 		this._value = value;
+		this.schedule();
 	}
 
 	current() {
