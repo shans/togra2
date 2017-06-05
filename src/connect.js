@@ -2,6 +2,7 @@ var pipe = require("./pipe.js");
 var parse = require("./parseGraph.js");
 var geom = require("./geometry.js");
 var assert = require("assert");
+var Togra = require("./togra.js");
 
 function matches(a, b) {
 	if (a == "Point2" && b == "Point3")
@@ -30,7 +31,7 @@ exports.connect = function(inp, out) {
 }
 
 exports.configureNamed = function(inp, name, value) {
-	exports.inputNamed(inp, name, new pipe.Immediate(value));
+	exports.inputNamed(inp, name, new pipe.Immediate(inp.scheduler, value));
 }
 
 exports.inputNamed = function(inp, name, value) {
@@ -71,19 +72,19 @@ function configure(instance, config, data) {
 	}	
 }
 
-function configuredInstance(type, inputs, config, data) {
+function configuredInstance(togra, type, inputs, config, data) {
 	var clazz = typeToClass(type, inputs);
-	var instance = new clazz(...inputs);
+	var instance = new clazz(togra, ...inputs);
 	configure(instance, config, data);
 	return instance;
 }
 
-exports.build = function(s, objects, data) {
+exports.build = function(togra, s, objects, data) {
 	var graphLines = parse.parse(s);
 	for (var line of graphLines) {
 		for (var nodeDesc of line.nodes) {
 			if (!objects[nodeDesc.name]) {
-				objects[nodeDesc.name] = configuredInstance(nodeDesc.type, nodeDesc.inputs, nodeDesc.configs, data);
+				objects[nodeDesc.name] = configuredInstance(togra, nodeDesc.type, nodeDesc.inputs, nodeDesc.configs, data);
 			} else {
 				configure(objects[nodeDesc.name], nodeDesc.configs, data);
 			}

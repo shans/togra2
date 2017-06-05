@@ -8,8 +8,8 @@ function tick() {
 }
 
 class Animation extends T.Output {
-  constructor() {
-    super();
+  constructor(scheduler) {
+    super(scheduler);
     this._baseTime = performance.now();
     this._currentTime = this._baseTime;
     tickers.push(this);
@@ -21,8 +21,8 @@ class Animation extends T.Output {
 }
 
 class UnitAnimationOutput extends Animation {
-  constructor(period) {
-    super();
+  constructor(scheduler, period) {
+    super(scheduler);
     this._period = period;
   }
 
@@ -37,8 +37,8 @@ class UnitAnimationOutput extends Animation {
 }
 
 class TickOutput extends Animation {
-  constructor(period) {
-    super();
+  constructor(scheduler, period) {
+    super(scheduler);
     this._period = period;
     this._lastValue = 0;
   }

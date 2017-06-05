@@ -5,6 +5,7 @@ var generators = require("./pipes/generators.js");
 var maths = require("./pipes/maths.js");
 var array = require("./pipes/array.js");
 var util = require("./pipes/util.js");
+var Togra = require("./togra.js");
 
 var exports = {};
 
@@ -14,5 +15,6 @@ function add(thing) {
 }
 
 [geometry, pipe, connect, generators, maths, array, util].map(add);
+exports.Togra = Togra;
 
 module.exports = exports;

@@ -3,9 +3,12 @@
 var geom = require("./geometry.js");
 var connect = require("./connect.js");
 var Point2 = geom.Point2;
+var Togra = require("./togra.js");
+var assert = require('assert');
 
 class Output {
 	constructor(scheduler) {
+		assert(scheduler);
 		this.watchers = [];
 		this.scheduler = scheduler;
 	}
@@ -52,11 +55,13 @@ class Immediate extends Output {
 }
 
 class Pipe {
-	constructor() {
+	constructor(scheduler) {
+		assert(scheduler);
 		this.inputs = new Map();
 		this.inputTypes = new Map();
 		this.outputTypes = new Map();
 		this.outputs = new Map();
+		this.scheduler = scheduler;
 	}
 
 	connectInput(name, input) {
@@ -72,7 +77,7 @@ class Pipe {
 			return this.outputs.get(name);
 		}
 		if (this.outputTypes.has(name)) {
-			var output = new PipeOutput(this, name);
+			var output = new PipeOutput(this.scheduler, this, name);
 			this.outputs.set(name, output);
 		} else {
 			throw "NoSuchOutput " + name;
@@ -121,8 +126,8 @@ function define(name, inputs, outputs, f) {
 		static get definedOutputs() {
 			return outputs;
 		}
-		constructor() {
-			super();
+		constructor(scheduler) {
+			super(scheduler);
 			for (var input in inputs)
 				this.inputTypes.set(input, inputs[input]);
 			for (var output in outputs)
@@ -140,12 +145,13 @@ function define(name, inputs, outputs, f) {
 }
 
 function group(definition, data) {
+	var togra = new Togra();
 	var inputs = {};
 	var outputs = {};
 	if (data == undefined) {data = {}};
 
 	// TODO have a lighter-weight parser to extract just the types.
-	var objects = connect.build(definition, {}, data);
+	var objects = togra.build(definition, {}, data);
 
 	for (var name in objects) {
 		var pipe = objects[name];
@@ -171,13 +177,13 @@ function group(definition, data) {
 		static get definedOutputs() {
 			return outputs;
 		}
-		constructor() {
-			super();
+		constructor(togra) {
+			super(togra);
 
 			this.inputPipes = new Map();
 			this.outputPipes = new Map();
 			if (data == undefined) {data = {}};
-			var objects = connect.build(definition, {}, data);
+			var objects = togra.build(definition, {}, data);
 			for (var name in objects) {
 				var pipe = objects[name];
 				for (var input of pipe.inputTypes.keys()) {
@@ -267,8 +273,8 @@ function zipper(pipeClass, mapped) {
 		static get definedOutputs() {
 			return outputs;
 		}	
-		constructor() {
-			super();
+		constructor(togra) {
+			super(togra);
 			for (var i in inputs)
 				this.inputTypes.set(i, inputs[i]);
 			this.outputTypes.set(output, outputs[output]);
@@ -293,13 +299,13 @@ function zipper(pipeClass, mapped) {
 			}
 
 			while (this.mappedPipes.length < length) {
-				var pipe = new pipeClass();
+				var pipe = new pipeClass(this.scheduler);
 				for (var i of this.inputsExceptMapped) {
 					pipe.connectInput(i, this.inputs.get(i));
 				}
 				for (var mI of mapped) {
 					// TODO:pass in mapped input pipe/name?
-					var pipeOutput = new PipeOutput();
+					var pipeOutput = new PipeOutput(this.scheduler);
 					pipeOutput.set(this.inputs.get(mI).current()[this.mappedPipes.length]);
 					pipe.connectInput(mI, pipeOutput);
 				}
@@ -348,9 +354,9 @@ function memoize(pipeClass) {
 				} else {
 					this.memo = _memos.get(pipeClass);
 				}
-				this.innerPipe = new pipeClass();
+				this.innerPipe = new pipeClass(this.scheduler);
 				for (var input in pipeClass.definedInputs) {
-					var po = new PipeOutput();
+					var po = new PipeOutput(this.scheduler);
 					po.set(args[input]);
 					this.innerPipe.connectInput(input, po);
 				}
